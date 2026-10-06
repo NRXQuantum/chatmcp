@@ -17,6 +17,7 @@ class DeepSeekClient extends BaseLLMClient {
   @override
   Future<LLMResponse> chatCompletion(CompletionRequest request) async {
     final httpClient = BaseLLMClient.createHttpClient();
+    final endpoint = getEndpoint(baseUrl, '/chat/completions');
 
     try {
       final body = <String, dynamic>{'model': request.model, 'messages': chatMessageToOpenAIMessage(request.messages)};
@@ -29,7 +30,7 @@ class DeepSeekClient extends BaseLLMClient {
 
       final bodyStr = jsonEncode(body);
 
-      final response = await httpClient.post(Uri.parse("$baseUrl/v1/chat/completions"), headers: _headers, body: bodyStr);
+      final response = await httpClient.post(Uri.parse(endpoint), headers: _headers, body: bodyStr);
 
       final responseBody = utf8.decode(response.bodyBytes);
       Logger.root.fine('DeepSeek response: $responseBody');
@@ -54,7 +55,7 @@ class DeepSeekClient extends BaseLLMClient {
 
       return LLMResponse(content: message['content'], toolCalls: toolCalls);
     } catch (e) {
-      throw await handleError(e, 'DeepSeek', '$baseUrl/v1/chat/completions', jsonEncode({}));
+      throw await handleError(e, 'DeepSeek', endpoint, jsonEncode({}));
     } finally {
       httpClient.close();
     }
@@ -64,10 +65,11 @@ class DeepSeekClient extends BaseLLMClient {
   Stream<LLMResponse> chatStreamCompletion(CompletionRequest request) async* {
     final body = {'model': request.model, 'messages': chatMessageToOpenAIMessage(request.messages), 'stream': true};
     addModelSettingsToBody(body, request.modelSetting);
+    final endpoint = getEndpoint(baseUrl, '/chat/completions');
 
     try {
       final bodyStr = jsonEncode(body);
-      final request = http.Request('POST', Uri.parse('$baseUrl/chat/completions'));
+      final request = http.Request('POST', Uri.parse(endpoint));
       request.headers.addAll(_headers);
       request.body = bodyStr;
       Logger.root.info('deepseek request chat stream completion: $bodyStr');
@@ -159,7 +161,7 @@ class DeepSeekClient extends BaseLLMClient {
       }
     } catch (e, trace) {
       Logger.root.severe('DeepSeek stream completion error: $e, trace: $trace');
-      throw await handleError(e, 'DeepSeek', '$baseUrl/chat/completions', jsonEncode(body));
+      throw await handleError(e, 'DeepSeek', endpoint, jsonEncode(body));
     }
   }
 
@@ -171,9 +173,10 @@ class DeepSeekClient extends BaseLLMClient {
     }
 
     final httpClient = BaseLLMClient.createHttpClient();
+    final endpoint = getEndpoint(baseUrl, '/models');
 
     try {
-      final response = await httpClient.get(Uri.parse("$baseUrl/v1/models"), headers: _headers);
+      final response = await httpClient.get(Uri.parse(endpoint), headers: _headers);
 
       if (response.statusCode != 200) {
         throw Exception('HTTP ${response.statusCode}: ${response.body}');
