@@ -66,38 +66,41 @@ class LLMFactoryHelper {
     Logger.root.info('Using API key for provider: $provider, model: $model, key: $maskedKey');
   }
 
-  static BaseLLMClient createFromModel(llm_model.Model currentModel) {
-    try {
-      final setting = ProviderManager.settingsProvider.apiSettings.firstWhere((element) => element.providerId == currentModel.providerId);
-
-      // Check if the provider is enabled (null means enabled, only false means disabled)
-      final isEnabled = setting.enable ?? true;
-      if (!isEnabled) {
-        throw Exception('Provider ${currentModel.providerId} is disabled');
-      }
-
-      // Set apiKey and baseUrl
-      final apiKey = setting.apiKey;
-      final baseUrl = setting.apiEndpoint;
-
-      _logApiKeyUsage(currentModel.providerId, currentModel.name, apiKey);
-
-      var provider = LLMFactoryHelper.providerMap[currentModel.providerId];
-
-      provider ??= LLMProvider.values.byName(currentModel.apiStyle);
-
-      // Create LLM client
-      return LLMFactory.create(provider, apiKey: apiKey, baseUrl: baseUrl);
-    } catch (e) {
-      // If no matching provider is found, use default OpenAI
-      Logger.root.warning('No matching provider found: ${currentModel.providerId}, using default OpenAI configuration');
-
-      var openAISetting = ProviderManager.settingsProvider.apiSettings.firstWhere(
-        (element) => element.providerId == "openai",
-        orElse: () => LLMProviderSetting(apiKey: '', apiEndpoint: '', providerId: 'openai'),
-      );
-
-      return OpenAIClient(apiKey: openAISetting.apiKey, baseUrl: openAISetting.apiEndpoint);
+  static LLMProvider _resolveProvider(String providerId, String apiStyle) {
+    final mappedProvider = providerMap[providerId];
+    if (mappedProvider != null) {
+      return mappedProvider;
     }
+
+    try {
+      return LLMProvider.values.byName(apiStyle);
+    } catch (_) {
+      Logger.root.warning('Unknown apiStyle: $apiStyle for provider: $providerId, fallback to openai');
+      return LLMProvider.openai;
+    }
+  }
+
+  static BaseLLMClient createFromModel(llm_model.Model currentModel) {
+    final setting = ProviderManager.settingsProvider.apiSettings.firstWhere(
+      (element) => element.providerId == currentModel.providerId,
+      orElse: () => LLMProviderSetting(apiKey: '', apiEndpoint: '', providerId: currentModel.providerId),
+    );
+
+    // Check if the provider is enabled (null means enabled, only false means disabled)
+    final isEnabled = setting.enable ?? true;
+    if (!isEnabled) {
+      throw Exception('Provider ${currentModel.providerId} is disabled');
+    }
+
+    // Set apiKey and baseUrl
+    final apiKey = setting.apiKey;
+    final baseUrl = setting.apiEndpoint;
+
+    _logApiKeyUsage(currentModel.providerId, currentModel.name, apiKey);
+
+    final provider = _resolveProvider(currentModel.providerId, currentModel.apiStyle);
+
+    // Create LLM client
+    return LLMFactory.create(provider, apiKey: apiKey, baseUrl: baseUrl, apiVersion: setting.apiVersion);
   }
 }
