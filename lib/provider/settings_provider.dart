@@ -255,6 +255,15 @@ final List<LLMProviderSetting> defaultApiSettings = [
   ),
   LLMProviderSetting(
     apiKey: '',
+    apiEndpoint: 'https://ollama.com',
+    apiStyle: 'ollama-cloud',
+    providerId: 'ollama-cloud',
+    providerName: 'Ollama Cloud',
+    icon: 'ollama',
+    custom: false,
+  ),
+  LLMProviderSetting(
+    apiKey: '',
     apiEndpoint: 'https://generativelanguage.googleapis.com/v1beta',
     apiStyle: 'gemini',
     providerId: 'gemini',
