@@ -32,7 +32,7 @@ jobs:
 
       - name: Setup Android SDK
         if: matrix.apk_build
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -55,7 +55,7 @@ jobs:
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
           mkdir -p android/app/keystore
-          
+
           if [ -n "$SIGNING_KEYSTORE" ]; then
             echo "$SIGNING_KEYSTORE" | base64 -d > android/app/keystore/release.jks
             echo "SIGNING_STORE_PATH=keystore/release.jks" >> $GITHUB_ENV
@@ -66,7 +66,7 @@ jobs:
           else
             echo "⚠️  No signature config found, using debug signing"
           fi
-      
+
       - name: Activate FastForge
         run: dart pub global activate fastforge
 
@@ -117,7 +117,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           npm install -g appdmg
-        
+
       - name: Build macos package
         if: matrix.os == 'macos-latest'
         run: |
@@ -127,7 +127,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           fastforge release --name=windows
-      
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
