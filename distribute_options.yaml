@@ -47,8 +47,8 @@ releases:
           platform: windows
           target: zip
           build_args:
-            build-name: 0.0.76
-            build-number: 76
+            build-name: "0.0.76"     
+            build-number: "76"       
             dart-define:
               APP_ENV: production
           extra_files:
@@ -59,8 +59,8 @@ releases:
           platform: windows
           target: msix
           build_args:
-            build-name: 0.0.76
-            build-number: 76
+            build-name: "0.0.76"    
+            build-number: "76"       
             dart-define:
               APP_ENV: production
 
