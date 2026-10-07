@@ -3,10 +3,10 @@
 # Usage: fastforge release --name=dev
 
 output: dist/
+
 releases:
-  - name: linux 
+  - name: linux
     jobs:
-      # Linux DEB Package Build (Debian/Ubuntu)
       - name: release-linux-deb
         package:
           platform: linux
@@ -14,8 +14,6 @@ releases:
           build_args:
             dart-define:
               APP_ENV: production
-      
-      # Linux RPM Package Build (Red Hat/CentOS/Fedora)
       - name: release-linux-rpm
         package:
           platform: linux
@@ -23,8 +21,6 @@ releases:
           build_args:
             dart-define:
               APP_ENV: production
-      
-      # Linux AppImage Package Build (Portable)
       - name: release-linux-appimage
         package:
           platform: linux
@@ -32,10 +28,9 @@ releases:
           build_args:
             dart-define:
               APP_ENV: production
-      
+
   - name: android
     jobs:
-      # Android APK Build
       - name: release-android-apk
         package:
           platform: android
@@ -44,18 +39,18 @@ releases:
             target-platform: android-arm,android-arm64
             dart-define:
               APP_ENV: production
-              
+
   - name: windows
     jobs:
-      # Windows ZIP Package Build
       - name: release-windows-zip
         package:
           platform: windows
           target: zip
           build_args:
+            build-name: 0.0.76
+            build-number: 76
             dart-define:
               APP_ENV: production
-          # Add extra file configuration
           extra_files:
             - source: "windows/sqlite3.dll"
               destination: "sqlite3.dll"
@@ -64,12 +59,13 @@ releases:
           platform: windows
           target: msix
           build_args:
+            build-name: 0.0.76
+            build-number: 76
             dart-define:
               APP_ENV: production
-              
+
   - name: macos
     jobs:
-      # macOS DMG Build
       - name: release-macos-dmg
         package:
           platform: macos
@@ -77,10 +73,9 @@ releases:
           build_args:
             dart-define:
               APP_ENV: production
-  
+
   - name: web
     jobs:
-      # Web Build
       - name: release-web-tarball
         package:
           platform: web
