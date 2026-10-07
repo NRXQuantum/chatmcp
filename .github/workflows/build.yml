@@ -5,6 +5,14 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (example: 0.0.76 or v0.0.76)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -135,11 +143,78 @@ jobs:
           path: |
             dist/*/*
 
+  release:
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build-*
+          merge-multiple: true
+          path: dist
+
+      - name: Prepare release metadata
+        id: release_meta
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF:-}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF_NAME}"
+          else
+            RAW="${INPUT_VERSION#v}"
+            if [ -z "$RAW" ]; then
+              echo "Release version is empty." >&2
+              exit 1
+            fi
+            TAG="v${RAW}"
+          fi
+          VERSION="${TAG#v}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Normalize release asset names
+        env:
+          VERSION: ${{ steps.release_meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+
+          copy_first() {
+            local pattern="$1"
+            local output="$2"
+            local input
+            input="$(find dist -type f -name "$pattern" | head -n 1 || true)"
+            if [ -z "$input" ]; then
+              echo "Missing expected artifact: $pattern" >&2
+              exit 1
+            fi
+            cp "$input" "release-assets/$output"
+          }
+
+          copy_first "*.apk" "chatmcp-${VERSION}-android.apk"
+          copy_first "*.AppImage" "chatmcp-${VERSION}-linux.AppImage"
+          copy_first "*.deb" "chatmcp-${VERSION}-linux.deb"
+          copy_first "*.rpm" "chatmcp-${VERSION}-linux.rpm"
+          copy_first "*.dmg" "chatmcp-${VERSION}-macos.dmg"
+          copy_first "*.msix" "chatmcp-${VERSION}-windows.msix"
+          copy_first "*.zip" "chatmcp-${VERSION}-windows.zip"
+
+      - name: Create release checksums
+        run: |
+          cd release-assets
+          sha256sum * > SHA256SUMS.txt
+
       - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ steps.release_meta.outputs.tag }}
+          name: ${{ steps.release_meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: |
-            dist/*/*
+            release-assets/*
+          fail_on_unmatched_files: true
         env:
-          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
