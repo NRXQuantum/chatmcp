@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (example: 0.0.76 or v0.0.76)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -139,7 +144,7 @@ jobs:
             dist/*/*
 
   release:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     needs: build
     runs-on: ubuntu-22.04
     steps:
@@ -150,10 +155,31 @@ jobs:
           merge-multiple: true
           path: dist
 
-      - name: Normalize release asset names
+      - name: Prepare release metadata
+        id: release_meta
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ "${GITHUB_REF:-}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF_NAME}"
+          else
+            RAW="${INPUT_VERSION#v}"
+            if [ -z "$RAW" ]; then
+              echo "Release version is empty." >&2
+              exit 1
+            fi
+            TAG="v${RAW}"
+          fi
+          VERSION="${TAG#v}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Normalize release asset names
+        env:
+          VERSION: ${{ steps.release_meta.outputs.version }}
+        run: |
+          set -euo pipefail
           mkdir -p release-assets
 
           copy_first() {
@@ -184,6 +210,9 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ steps.release_meta.outputs.tag }}
+          name: ${{ steps.release_meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: |
             release-assets/*
           fail_on_unmatched_files: true
