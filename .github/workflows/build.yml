@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - 'v*'
+  release:
+    types:
+      - published
   workflow_dispatch:
     inputs:
       version:
@@ -144,7 +147,7 @@ jobs:
             dist/*/*
 
   release:
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
     needs: build
     runs-on: ubuntu-22.04
     steps:
@@ -159,9 +162,17 @@ jobs:
         id: release_meta
         env:
           INPUT_VERSION: ${{ github.event.inputs.version }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TARGET_COMMITISH: ${{ github.event.release.target_commitish }}
         run: |
           set -euo pipefail
-          if [[ "${GITHUB_REF:-}" == refs/tags/* ]]; then
+          if [ "${GITHUB_EVENT_NAME:-}" = "release" ]; then
+            TAG="${RELEASE_TAG}"
+            if [ -z "$TAG" ]; then
+              echo "Release tag is empty." >&2
+              exit 1
+            fi
+          elif [[ "${GITHUB_REF:-}" == refs/tags/* ]]; then
             TAG="${GITHUB_REF_NAME}"
           else
             RAW="${INPUT_VERSION#v}"
@@ -174,6 +185,11 @@ jobs:
           VERSION="${TAG#v}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          if [ "${GITHUB_EVENT_NAME:-}" = "release" ] && [ -n "${RELEASE_TARGET_COMMITISH}" ]; then
+            echo "target_commitish=${RELEASE_TARGET_COMMITISH}" >> "$GITHUB_OUTPUT"
+          else
+            echo "target_commitish=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Normalize release asset names
         env:
@@ -212,7 +228,7 @@ jobs:
         with:
           tag_name: ${{ steps.release_meta.outputs.tag }}
           name: ${{ steps.release_meta.outputs.tag }}
-          target_commitish: ${{ github.sha }}
+          target_commitish: ${{ steps.release_meta.outputs.target_commitish }}
           files: |
             release-assets/*
           fail_on_unmatched_files: true
