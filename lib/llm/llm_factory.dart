@@ -12,10 +12,25 @@ import 'package:chatmcp/provider/settings_provider.dart';
 import 'package:logging/logging.dart';
 import 'model.dart' as llm_model;
 
-enum LLMProvider { openai, claude, ollama, deepseek, gemini, foundry, claudeCode, copilot }
+enum LLMProvider {
+  openai,
+  claude,
+  ollama,
+  ollamaCloud,
+  deepseek,
+  gemini,
+  foundry,
+  claudeCode,
+  copilot,
+}
 
 class LLMFactory {
-  static BaseLLMClient create(LLMProvider provider, {required String apiKey, required String baseUrl, String? apiVersion}) {
+  static BaseLLMClient create(
+    LLMProvider provider, {
+    required String apiKey,
+    required String baseUrl,
+    String? apiVersion,
+  }) {
     switch (provider) {
       case LLMProvider.openai:
         return OpenAIClient(apiKey: apiKey, baseUrl: baseUrl);
@@ -27,10 +42,16 @@ class LLMFactory {
         return DeepSeekClient(apiKey: apiKey, baseUrl: baseUrl);
       case LLMProvider.ollama:
         return OllamaClient(baseUrl: baseUrl);
+      case LLMProvider.ollamaCloud:
+        return OllamaClient(baseUrl: baseUrl, apiKey: apiKey, isCloud: true);
       case LLMProvider.gemini:
         return GeminiClient(apiKey: apiKey, baseUrl: baseUrl);
       case LLMProvider.foundry:
-        return FoundryClient(apiKey: apiKey, baseUrl: baseUrl, apiVersion: apiVersion);
+        return FoundryClient(
+          apiKey: apiKey,
+          baseUrl: baseUrl,
+          apiVersion: apiVersion,
+        );
       case LLMProvider.copilot:
         return CopilotClient(apiKey: apiKey);
     }
@@ -38,7 +59,12 @@ class LLMFactory {
 }
 
 class LLMFactoryHelper {
-  static final nonChatModelKeywords = {"whisper", "tts", "dall-e", "embedding"};
+  static final nonChatModelKeywords = {
+    "whisper",
+    "tts",
+    "dall-e",
+    "embedding",
+  };
 
   static bool isChatModel(llm_model.Model model) {
     return !nonChatModelKeywords.any((keyword) => model.name.contains(keyword));
@@ -50,6 +76,7 @@ class LLMFactoryHelper {
     "claude-code": LLMProvider.claudeCode,
     "deepseek": LLMProvider.deepseek,
     "ollama": LLMProvider.ollama,
+    "ollama-cloud": LLMProvider.ollamaCloud,  
     "gemini": LLMProvider.gemini,
     "foundry": LLMProvider.foundry,
     "copilot": LLMProvider.copilot,
@@ -63,7 +90,9 @@ class LLMFactoryHelper {
 
   static void _logApiKeyUsage(String provider, String model, String apiKey) {
     final maskedKey = _maskApiKey(apiKey);
-    Logger.root.info('Using API key for provider: $provider, model: $model, key: $maskedKey');
+    Logger.root.info(
+      'Using API key for provider: $provider, model: $model, key: $maskedKey',
+    );
   }
 
   static LLMProvider _resolveProvider(String providerId, String apiStyle) {
@@ -75,7 +104,9 @@ class LLMFactoryHelper {
     try {
       return LLMProvider.values.byName(apiStyle);
     } catch (_) {
-      Logger.root.warning('Unknown apiStyle: $apiStyle for provider: $providerId, fallback to openai');
+      Logger.root.warning(
+        'Unknown apiStyle: $apiStyle for provider: $providerId, fallback to openai',
+      );
       return LLMProvider.openai;
     }
   }
@@ -83,24 +114,33 @@ class LLMFactoryHelper {
   static BaseLLMClient createFromModel(llm_model.Model currentModel) {
     final setting = ProviderManager.settingsProvider.apiSettings.firstWhere(
       (element) => element.providerId == currentModel.providerId,
-      orElse: () => LLMProviderSetting(apiKey: '', apiEndpoint: '', providerId: currentModel.providerId),
+      orElse: () => LLMProviderSetting(
+        apiKey: '',
+        apiEndpoint: '',
+        providerId: currentModel.providerId,
+      ),
     );
 
-    // Check if the provider is enabled (null means enabled, only false means disabled)
     final isEnabled = setting.enable ?? true;
     if (!isEnabled) {
       throw Exception('Provider ${currentModel.providerId} is disabled');
     }
 
-    // Set apiKey and baseUrl
     final apiKey = setting.apiKey;
     final baseUrl = setting.apiEndpoint;
 
     _logApiKeyUsage(currentModel.providerId, currentModel.name, apiKey);
 
-    final provider = _resolveProvider(currentModel.providerId, currentModel.apiStyle);
+    final provider = _resolveProvider(
+      currentModel.providerId,
+      currentModel.apiStyle,
+    );
 
-    // Create LLM client
-    return LLMFactory.create(provider, apiKey: apiKey, baseUrl: baseUrl, apiVersion: setting.apiVersion);
+    return LLMFactory.create(
+      provider,
+      apiKey: apiKey,
+      baseUrl: baseUrl,
+      apiVersion: setting.apiVersion,
+    );
   }
 }
