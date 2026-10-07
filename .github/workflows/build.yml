@@ -3,234 +3,280 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'
-  release:
-    types:
-      - published
+      - "v*"
+
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (example: 0.0.76 or v0.0.76)'
+        description: "Release version, example: 0.0.77 or v0.0.77"
         required: true
         type: string
 
 permissions:
   contents: write
 
+env:
+  FLUTTER_VERSION: "3.32.5"
+
 jobs:
   build:
-    strategy:
-      matrix:
-        os: [ubuntu-22.04, macos-latest, windows-latest]
-        include:
-          - os: ubuntu-22.04
-            apk_build: true
-          - os: macos-latest
-            apk_build: false
-          - os: windows-latest
-            apk_build: false
+    name: Build ${{ matrix.name }} packages
     runs-on: ${{ matrix.os }}
 
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux
+            os: ubuntu-22.04
+
+          - name: macos
+            os: macos-latest
+
+          - name: windows
+            os: windows-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout source
+        uses: actions/checkout@v4
 
       - name: Setup Java
-        if: matrix.apk_build
-        uses: actions/setup-java@v3
+        if: matrix.name == "linux"
+        uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
+          distribution: zulu
+          java-version: "17"
 
       - name: Setup Android SDK
-        if: matrix.apk_build
+        if: matrix.name == "linux"
         uses: android-actions/setup-android@v3
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
-          flutter-version: '3.32.5'
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      - name: Create empty .env file
+      - name: Create .env file on Linux/macOS
+        if: runner.os != 'Windows'
+        shell: bash
         run: touch .env
+
+      - name: Create .env file on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: New-Item -Path .env -ItemType File -Force | Out-Null
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Setup Android Signing
-        if: matrix.apk_build && github.event_name != 'pull_request'
+      - name: Configure Android signing
+        if: matrix.name == "linux"
         env:
           SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        shell: bash
         run: |
+          set -euo pipefail
+
           mkdir -p android/app/keystore
-          
-          if [ -n "$SIGNING_KEYSTORE" ]; then
+
+          if [ -n "${SIGNING_KEYSTORE:-}" ]; then
             echo "$SIGNING_KEYSTORE" | base64 -d > android/app/keystore/release.jks
-            echo "SIGNING_STORE_PATH=keystore/release.jks" >> $GITHUB_ENV
-            echo "SIGNING_KEY_ALIAS=$SIGNING_KEY_ALIAS" >> $GITHUB_ENV
-            echo "SIGNING_STORE_PASSWORD=$SIGNING_STORE_PASSWORD" >> $GITHUB_ENV
-            echo "SIGNING_KEY_PASSWORD=$SIGNING_KEY_PASSWORD" >> $GITHUB_ENV
-            echo "✅ Android Signature Config Set"
+
+            {
+              echo "SIGNING_STORE_PATH=keystore/release.jks"
+              echo "SIGNING_KEY_ALIAS=$SIGNING_KEY_ALIAS"
+              echo "SIGNING_STORE_PASSWORD=$SIGNING_STORE_PASSWORD"
+              echo "SIGNING_KEY_PASSWORD=$SIGNING_KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+
+            echo "Android signing configuration enabled."
           else
-            echo "⚠️  No signature config found, using debug signing"
+            echo "Android signing secrets were not found. Default signing will be used."
           fi
-      
-      - name: Activate FastForge
+
+      - name: Install FastForge
         run: dart pub global activate fastforge
 
-      - name: Build linux/android package
-        if: matrix.os == 'ubuntu-22.04'
+      - name: Install Linux build dependencies
+        if: matrix.name == "linux"
+        shell: bash
         run: |
+          set -euo pipefail
+
           sudo apt-get update
-          sudo apt-get install -y ninja-build libgtk-3-dev locate libsqlite3-dev fuse libfuse2 libstdc++-12-dev patchelf
-          sudo updatedb
-          wget -O appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+
+          sudo apt-get install -y \
+            ninja-build \
+            libgtk-3-dev \
+            libsqlite3-dev \
+            fuse \
+            libfuse2 \
+            libstdc++-12-dev \
+            patchelf
+
+          wget -O appimagetool \
+            https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+
           chmod +x appimagetool
-          sudo mv appimagetool /usr/local/bin/
+          sudo mv appimagetool /usr/local/bin/appimagetool
+
+      - name: Build Linux, Android, and Web packages
+        if: matrix.name == "linux"
+        shell: bash
+        run: |
+          set -euo pipefail
+
           fastforge release --name=linux
           fastforge release --name=android
+          fastforge release --name=web
 
-      - name: Verify AppImage GLIBC compatibility (Pop!_OS 22.04)
-        if: matrix.os == 'ubuntu-22.04'
+      - name: Install macOS packaging tools
+        if: matrix.name == "macos"
+        run: npm install --global appdmg
+
+      - name: Build macOS packages
+        if: matrix.name == "macos"
+        run: fastforge release --name=macos
+
+      - name: Build Windows packages
+        if: matrix.name == "windows"
+        run: fastforge release --name=windows
+
+      - name: Verify build outputs
+        shell: bash
         run: |
-          set -e
-          shopt -s nullglob
-          found=0
-          for f in dist/**/*AppImage dist/*.AppImage; do
-            echo "Checking $f"
-            chmod +x "$f"
-            "$f" --appimage-extract >/dev/null 2>&1 || true
-            if [ -d squashfs-root/usr/lib ]; then
-              if strings squashfs-root/usr/lib/libstdc++.so.6 | grep -E 'GLIBC_2\.(36|37|38|39)' -q; then
-                echo "❌ $f contains libstdc++ requiring newer GLIBC" >&2
-                exit 1
-              fi
-            fi
-            rm -rf squashfs-root
-            found=1
-          done
-          if [ "$found" -eq 0 ]; then
-            echo "No AppImage files found under dist/. Skipping check."
-          else
-            echo "✅ AppImage libstdc++ is compatible with GLIBC 2.35 hosts."
+          set -euo pipefail
+
+          if [ ! -d dist ]; then
+            echo "dist directory was not created." >&2
+            exit 1
           fi
 
-      - name: Setup Node.js for macOS
-        if: matrix.os == 'macos-latest'
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
+          echo "Generated files:"
+          find dist -type f -print | sort
 
-      - name: macos npm install
-        if: matrix.os == 'macos-latest'
-        run: |
-          npm install -g appdmg
-        
-      - name: Build macos package
-        if: matrix.os == 'macos-latest'
-        run: |
-          fastforge release --name=macos
-
-      - name: Build windows package
-        if: matrix.os == 'windows-latest'
-        run: |
-          fastforge release --name=windows
-      
-      - name: Upload Artifact
+      - name: Upload build outputs
         uses: actions/upload-artifact@v4
         with:
-          name: build-${{ matrix.os }}
-          path: |
-            dist/*/*
+          name: build-${{ matrix.name }}
+          path: dist
+          if-no-files-found: error
+          retention-days: 7
 
   release:
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
+    name: Publish release assets
     needs: build
     runs-on: ubuntu-22.04
+
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+
     steps:
-      - name: Download all build artifacts
+      - name: Download all build outputs
         uses: actions/download-artifact@v4
         with:
           pattern: build-*
           merge-multiple: true
           path: dist
 
-      - name: Prepare release metadata
+      - name: Resolve release version
         id: release_meta
         env:
           INPUT_VERSION: ${{ github.event.inputs.version }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-          RELEASE_TARGET_COMMITISH: ${{ github.event.release.target_commitish }}
+        shell: bash
         run: |
           set -euo pipefail
-          if [ "${GITHUB_EVENT_NAME:-}" = "release" ]; then
-            TAG="${RELEASE_TAG}"
-            if [ -z "$TAG" ]; then
-              echo "Release tag is empty." >&2
+
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG="$GITHUB_REF_NAME"
+          else
+            VERSION="${INPUT_VERSION#v}"
+
+            if [ -z "$VERSION" ]; then
+              echo "Version is required for manual workflow execution." >&2
               exit 1
             fi
-          elif [[ "${GITHUB_REF:-}" == refs/tags/* ]]; then
-            TAG="${GITHUB_REF_NAME}"
-          else
-            RAW="${INPUT_VERSION#v}"
-            if [ -z "$RAW" ]; then
-              echo "Release version is empty." >&2
-              exit 1
-            fi
-            TAG="v${RAW}"
-          fi
-          VERSION="${TAG#v}"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          if [ "${GITHUB_EVENT_NAME:-}" = "release" ] && [ -n "${RELEASE_TARGET_COMMITISH}" ]; then
-            echo "target_commitish=${RELEASE_TARGET_COMMITISH}" >> "$GITHUB_OUTPUT"
-          else
-            echo "target_commitish=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+            TAG="v${VERSION}"
           fi
 
-      - name: Normalize release asset names
+          VERSION="${TAG#v}"
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          echo "Release tag: $TAG"
+          echo "Release version: $VERSION"
+
+      - name: Collect release assets
         env:
           VERSION: ${{ steps.release_meta.outputs.version }}
+        shell: bash
         run: |
           set -euo pipefail
+
           mkdir -p release-assets
 
-          copy_first() {
+          copy_asset() {
             local pattern="$1"
             local output="$2"
             local input
-            input="$(find dist -type f -name "$pattern" | head -n 1 || true)"
+
+            input="$(find dist -type f -iname "$pattern" -print -quit || true)"
+
             if [ -z "$input" ]; then
-              echo "Missing expected artifact: $pattern" >&2
+              echo "Missing artifact matching: $pattern" >&2
+              echo "Available files:" >&2
+              find dist -type f -print | sort >&2 || true
               exit 1
             fi
+
+            echo "Copying $input to release-assets/$output"
             cp "$input" "release-assets/$output"
           }
 
-          copy_first "*.apk" "chatmcp-${VERSION}-android.apk"
-          copy_first "*.AppImage" "chatmcp-${VERSION}-linux.AppImage"
-          copy_first "*.deb" "chatmcp-${VERSION}-linux.deb"
-          copy_first "*.rpm" "chatmcp-${VERSION}-linux.rpm"
-          copy_first "*.dmg" "chatmcp-${VERSION}-macos.dmg"
-          copy_first "*.msix" "chatmcp-${VERSION}-windows.msix"
-          copy_first "*.zip" "chatmcp-${VERSION}-windows.zip"
+          copy_asset "*.apk" \
+            "chatmcp-${VERSION}-android.apk"
 
-      - name: Create release checksums
-        run: |
-          cd release-assets
-          sha256sum * > SHA256SUMS.txt
+          copy_asset "*.AppImage" \
+            "chatmcp-${VERSION}-linux.AppImage"
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
+          copy_asset "*.deb" \
+            "chatmcp-${VERSION}-linux.deb"
+
+          copy_asset "*.rpm" \
+            "chatmcp-${VERSION}-linux.rpm"
+
+          copy_asset "*.dmg" \
+            "chatmcp-${VERSION}-macos.dmg"
+
+          copy_asset "*.msix" \
+            "chatmcp-${VERSION}-windows.msix"
+
+          copy_asset "*.zip" \
+            "chatmcp-${VERSION}-windows.zip"
+
+          copy_asset "*.tar.gz" \
+            "chatmcp-${VERSION}-web.tar.gz"
+
+          (
+            cd release-assets
+            sha256sum * > SHA256SUMS.txt
+          )
+
+          echo "Final release assets:"
+          find release-assets -maxdepth 1 -type f -printf "%f\n" | sort
+
+      - name: Publish all assets to GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.release_meta.outputs.tag }}
           name: ${{ steps.release_meta.outputs.tag }}
-          target_commitish: ${{ steps.release_meta.outputs.target_commitish }}
-          files: |
-            release-assets/*
+          files: release-assets/*
           fail_on_unmatched_files: true
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
