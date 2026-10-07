@@ -12,8 +12,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -26,17 +24,11 @@ jobs:
       - name: Check formatting (dry-run, excluding generated)
         run: |
           set -e
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE_SHA="${{ github.event.pull_request.base.sha }}"
-            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-          else
-            BASE_SHA="${{ github.event.before }}"
-            HEAD_SHA="${{ github.sha }}"
-          fi
-          FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- '*.dart' ':!lib/generated/**')
+          FILES=$(git ls-files '*.dart' ':!lib/generated/**')
           if [ -z "$FILES" ]; then
-            echo "No changed Dart files to check."
+            echo "No Dart files to check."
             exit 0
           fi
           dart --version
           dart format --output=none --set-exit-if-changed $FILES
+
