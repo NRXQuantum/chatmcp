@@ -426,7 +426,10 @@ class _ChatPageState extends State<ChatPage> {
 
     // Configures tool call with timeout and retry mechanism
     const int maxRetries = 3;
-    const Duration timeout = Duration(seconds: 60 * 5);
+    final generalSetting = ProviderManager.settingsProvider.generalSetting;
+    final Duration timeout = generalSetting.unlimitedToolTimeout
+        ? const Duration(days: 365)
+        : const Duration(seconds: 60 * 5);
 
     JSONRPCMessage? response;
     String? lastError;
