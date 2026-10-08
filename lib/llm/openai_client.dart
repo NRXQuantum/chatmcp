@@ -112,6 +112,8 @@ class OpenAIClient extends BaseLLMClient {
           final delta = json['choices'][0]['delta'];
           if (delta == null) continue;
 
+          final finishReason = json['choices'][0]['finish_reason'] as String?;
+
           final toolCalls = delta['tool_calls']
               ?.map<ToolCall>(
                 (t) => ToolCall(
@@ -122,8 +124,12 @@ class OpenAIClient extends BaseLLMClient {
               )
               ?.toList();
 
-          if (delta['content'] != null || toolCalls != null) {
-            yield LLMResponse(content: delta['content'], toolCalls: toolCalls);
+          if (delta['content'] != null || toolCalls != null || finishReason != null) {
+            yield LLMResponse(
+              content: delta['content'],
+              toolCalls: toolCalls,
+              finishReason: finishReason,
+            );
           }
 
           if (json['usage'] != null) {
