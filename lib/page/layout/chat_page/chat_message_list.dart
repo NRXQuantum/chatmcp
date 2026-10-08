@@ -14,7 +14,14 @@ class MessageList extends StatefulWidget {
   final List<ChatMessage> messages;
   final Function(ChatMessage) onRetry;
   final Function(String messageId) onSwitch;
-  const MessageList({super.key, required this.messages, required this.onRetry, required this.onSwitch});
+  final VoidCallback onContinue;
+  const MessageList({
+    super.key,
+    required this.messages,
+    required this.onRetry,
+    required this.onSwitch,
+    required this.onContinue,
+  });
 
   @override
   State<MessageList> createState() => _MessageListState();
@@ -140,7 +147,14 @@ class _MessageListState extends State<MessageList> {
               itemBuilder: (context, index) {
                 final group = groupedMessages[index];
 
-                return ChatUIMessage(key: ValueKey(group.first.messageId), messages: group, onRetry: widget.onRetry, onSwitch: widget.onSwitch);
+                return ChatUIMessage(
+                  key: ValueKey(group.first.messageId),
+                  messages: group,
+                  onRetry: widget.onRetry,
+                  onSwitch: widget.onSwitch,
+                  onContinue: widget.onContinue,
+                  isLast: index == 0,
+                );
               },
             ),
             // if (!_isScrolledToBottom())

@@ -122,8 +122,17 @@ class ChatUIMessage extends StatelessWidget {
   final List<ChatMessage> messages;
   final Function(ChatMessage) onRetry;
   final Function(String messageId) onSwitch;
+  final VoidCallback? onContinue;
+  final bool isLast;
 
-  const ChatUIMessage({super.key, required this.messages, required this.onRetry, required this.onSwitch});
+  const ChatUIMessage({
+    super.key,
+    required this.messages,
+    required this.onRetry,
+    required this.onSwitch,
+    this.onContinue,
+    this.isLast = false,
+  });
 
   List<ChatMessage> _filterMessages(List<ChatMessage> messages) {
     if (messages.length <= 1) return messages;
@@ -196,7 +205,14 @@ class ChatUIMessage extends StatelessWidget {
                   children: [
                     _buildMessageGroup(context, messages, isUser),
                     if (messages.last.role != MessageRole.loading)
-                      MessageActions(messages: messages, onRetry: onRetry, onSwitch: onSwitch, isUser: isUser),
+                      MessageActions(
+                        messages: messages,
+                        onRetry: onRetry,
+                        onSwitch: onSwitch,
+                        isUser: isUser,
+                        isLast: isLast,
+                        onContinue: onContinue,
+                      ),
                   ],
                 ),
               ),

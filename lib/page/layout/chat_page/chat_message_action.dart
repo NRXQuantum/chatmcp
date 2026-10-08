@@ -9,8 +9,18 @@ class MessageActions extends StatelessWidget {
   final Function(ChatMessage) onRetry;
   final Function(String messageId) onSwitch;
   final bool isUser;
+  final bool isLast;
+  final VoidCallback? onContinue;
 
-  const MessageActions({super.key, required this.messages, required this.onRetry, required this.onSwitch, this.isUser = false});
+  const MessageActions({
+    super.key,
+    required this.messages,
+    required this.onRetry,
+    required this.onSwitch,
+    this.isUser = false,
+    this.isLast = false,
+    this.onContinue,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +52,30 @@ class MessageActions extends StatelessWidget {
                 onRetry(messages.last);
               },
               tooltip: t.retry,
+            ),
+          // Continue button - only on the last assistant message when truncated/stopped
+          if (!isUser &&
+              isLast &&
+              onContinue != null &&
+              (messages.last.finishReason == 'length' ||
+                  messages.last.finishReason == 'cancelled'))
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: TextButton.icon(
+                onPressed: onContinue,
+                icon: const Icon(Icons.play_arrow, size: 14),
+                label: const Text('Continue', style: TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: const Size(0, 28),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.outline.withAlpha(80),
+                    ),
+                  ),
+                ),
+              ),
             ),
           // Branch switch - only for assistant messages
           if (!isUser && messages.first.brotherMessageIds != null && messages.first.brotherMessageIds!.isNotEmpty) _buildBranchSwitchWidget(messages),
