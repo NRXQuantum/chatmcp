@@ -106,6 +106,7 @@ class DeepSeekClient extends BaseLLMClient {
 
           final delta = json['choices'][0]['delta'];
           if (delta == null) continue;
+          final finishReason = json['choices'][0]['finish_reason'] as String?;
 
           // Parse tool calls
           final toolCalls = delta['tool_calls']
@@ -153,6 +154,9 @@ class DeepSeekClient extends BaseLLMClient {
 
               yield LLMResponse(content: content, toolCalls: toolCalls);
             }
+          }
+          if (finishReason != null) {
+            yield LLMResponse(finishReason: finishReason);
           }
         } catch (e, trace) {
           Logger.root.severe('Failed to parse chunk: $jsonStr, error: $e, trace: $trace');

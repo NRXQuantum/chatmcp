@@ -103,7 +103,15 @@ class GeminiClient extends BaseLLMClient {
 
           final usage = TokenUsage.fromGemini(json['usageMetadata'], modelName: json['modelVersion']);
 
-          yield LLMResponse(content: text, tokenUsage: usage);
+          final finishReason = json['candidates'] != null &&
+                  (json['candidates'] as List).isNotEmpty
+              ? json['candidates'][0]['finishReason'] as String?
+              : null;
+          yield LLMResponse(
+            content: text,
+            tokenUsage: usage,
+            finishReason: finishReason,
+          );
         } catch (e) {
           Logger.root.severe('Failed to parse chunk: $line $e');
           continue;

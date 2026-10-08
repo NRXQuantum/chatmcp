@@ -113,6 +113,16 @@ class ClaudeClient extends BaseLLMClient {
                 Logger.root.warning('Invalid content_block_start event: $event');
               }
               break;
+            case 'message_delta':
+              try {
+                final stopReason = event['delta']?['stop_reason'] as String?;
+                if (stopReason != null) {
+                  yield LLMResponse(finishReason: stopReason);
+                }
+              } catch (e) {
+                Logger.root.warning('message_delta parse: $e');
+              }
+              break;
             case 'content_block_delta':
               final delta = event['delta'];
               if (delta == null) {
