@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:chatmcp/provider/provider_manager.dart';
 import 'dart:io';
 import 'package:logging/logging.dart';
 import 'package:synchronized/synchronized.dart';
@@ -148,8 +149,9 @@ class StdioClient implements McpClient {
 
     try {
       await write(utf8.encode(jsonEncode(message.toJson())));
+      final unlimited = ProviderManager.settingsProvider.generalSetting.unlimitedToolTimeout;
       return await completer.future.timeout(
-        const Duration(seconds: 60 * 60),
+        unlimited ? const Duration(days: 365) : const Duration(seconds: 60 * 60),
         onTimeout: () {
           _pendingRequests.remove(message.id);
           throw TimeoutException('Request timed out: ${message.id}');
