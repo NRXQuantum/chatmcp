@@ -192,13 +192,21 @@ class OllamaClient extends BaseLLMClient {
                   ),
                 )
                 ?.toList();
-            if ((content != null && content.isNotEmpty) || toolCalls != null) {
-              yield LLMResponse(content: content, toolCalls: toolCalls);
+            final doneReason = json['done'] == true
+                ? (json['done_reason'] as String? ?? 'stop')
+                : null;
+            if ((content != null && content.isNotEmpty) || toolCalls != null || doneReason != null) {
+              yield LLMResponse(
+                content: content,
+                toolCalls: toolCalls,
+                finishReason: doneReason,
+              );
             }
           } else {
             if (json['choices'] == null || json['choices'].isEmpty) continue;
             final delta = json['choices'][0]['delta'];
             if (delta == null) continue;
+            final finishReason = json['choices'][0]['finish_reason'] as String?;
 
             final toolCalls = delta['tool_calls']
                 ?.map<ToolCall>(
@@ -214,8 +222,12 @@ class OllamaClient extends BaseLLMClient {
                 )
                 ?.toList();
 
-            if (delta['content'] != null || toolCalls != null) {
-              yield LLMResponse(content: delta['content'], toolCalls: toolCalls);
+            if (delta['content'] != null || toolCalls != null || finishReason != null) {
+              yield LLMResponse(
+                content: delta['content'],
+                toolCalls: toolCalls,
+                finishReason: finishReason,
+              );
             }
           }
         } catch (e) {
