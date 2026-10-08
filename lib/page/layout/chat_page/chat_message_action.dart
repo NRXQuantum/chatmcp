@@ -53,12 +53,13 @@ class MessageActions extends StatelessWidget {
               },
               tooltip: t.retry,
             ),
-          // Continue button - only on the last assistant message when truncated/stopped
+          // Continue button — shown on the last assistant message
+          // whenever it has completed with any finish reason.
           if (!isUser &&
               isLast &&
               onContinue != null &&
-              (messages.last.finishReason == 'length' ||
-                  messages.last.finishReason == 'cancelled'))
+              messages.last.finishReason != null &&
+              (messages.last.content?.isNotEmpty ?? false))
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: TextButton.icon(

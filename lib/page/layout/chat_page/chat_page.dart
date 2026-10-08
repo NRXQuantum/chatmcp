@@ -515,9 +515,17 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> _onContinue() async {
     if (_messages.isEmpty) return;
-    final last = _messages.last;
-    if (last.role != MessageRole.assistant) return;
-    if (last.content == null || last.content!.isEmpty) return;
+    // Walk back to find the last non-empty assistant message.
+    ChatMessage? last;
+    for (int i = _messages.length - 1; i >= 0; i--) {
+      final m = _messages[i];
+      if (m.role == MessageRole.assistant &&
+          (m.content?.isNotEmpty ?? false)) {
+        last = m;
+        break;
+      }
+    }
+    if (last == null) return;
 
     // MCP-aware continuation:
     // We route through _handleSubmitted (not just _processLLMResponse)
@@ -817,11 +825,26 @@ class _ChatPageState extends State<ChatPage> {
 
     _initializeAssistantResponse();
     await _processResponseStream(stream);
-    if (_messages.isNotEmpty && _messages.last.role == MessageRole.assistant) {
-      if (_isCancelled) {
-        _messages.last.finishReason = 'cancelled';
-      } else if (_lastStreamFinishReason != null) {
-        _messages.last.finishReason = _lastStreamFinishReason;
+    if (_messages.isNotEmpty) {
+      // Walk back to find the last non-empty assistant message
+      int idx = -1;
+      for (int i = _messages.length - 1; i >= 0; i--) {
+        final m = _messages[i];
+        if (m.role == MessageRole.assistant &&
+            (m.content?.isNotEmpty ?? false)) {
+          idx = i;
+          break;
+        }
+      }
+      if (idx != -1) {
+        if (_isCancelled) {
+          _messages[idx].finishReason = 'cancelled';
+        } else if (_lastStreamFinishReason != null) {
+          _messages[idx].finishReason = _lastStreamFinishReason;
+        } else {
+          // Universal fallback for providers that don't emit finish_reason
+          _messages[idx].finishReason = 'stop';
+        }
       }
       _lastStreamFinishReason = null;
     }
@@ -873,7 +896,14 @@ class _ChatPageState extends State<ChatPage> {
   void _initializeAssistantResponse() {
     setState(() {
       _currentResponse = '';
-      _messages.add(ChatMessage(content: _currentResponse, role: MessageRole.assistant, parentMessageId: _parentMessageId));
+      // Skip adding empty assistant bubble if already cancelled.
+      if (!_isCancelled) {
+        _messages.add(ChatMessage(
+          content: _currentResponse,
+          role: MessageRole.assistant,
+          parentMessageId: _parentMessageId,
+        ));
+      }
     });
   }
 
@@ -1097,6 +1127,17 @@ class _ChatPageState extends State<ChatPage> {
     _resetState();
     setState(() {
       _isCancelled = true;
+      // Mark the last non-empty assistant message as cancelled
+      // so the Continue button attaches to a visible bubble,
+      // even if the cancel happened during an MCP tool call.
+      for (int i = _messages.length - 1; i >= 0; i--) {
+        final m = _messages[i];
+        if (m.role == MessageRole.assistant &&
+            (m.content?.isNotEmpty ?? false)) {
+          m.finishReason = 'cancelled';
+          break;
+        }
+      }
     });
   }
 
