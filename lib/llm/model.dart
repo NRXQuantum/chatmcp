@@ -46,6 +46,7 @@ class ChatMessage {
   final TokenUsage? tokenUsage;
   final List<Map<String, dynamic>>? toolCalls;
   final List<File>? files;
+  String? finishReason; // 'stop' | 'length' | 'cancelled' (mutable)
   List<String>? brotherMessageIds;
   List<String>? childMessageIds;
 
@@ -58,6 +59,7 @@ class ChatMessage {
     this.tokenUsage,
     this.toolCalls,
     this.files,
+    this.finishReason,
     this.brotherMessageIds,
     this.childMessageIds,
     String? messageId,
@@ -185,18 +187,21 @@ class LLMResponse {
   final String? content;
   final List<ToolCall>? toolCalls;
   final bool needToolCall;
+  final String? finishReason;
   final TokenUsage? tokenUsage; // Token usage information
 
   LLMResponse({
     this.content, 
     this.toolCalls,
     this.tokenUsage,
+    this.finishReason,
   }) : needToolCall = toolCalls != null && toolCalls.isNotEmpty;
 
   Map<String, dynamic> toJson() => {
     'content': content, 
     'tool_calls': toolCalls?.map((t) => t.toJson()).toList(), 
     'need_tool_call': needToolCall,
+    if (finishReason != null) 'finish_reason': finishReason,
     if (tokenUsage != null) 'token_usage': tokenUsage!.toJson(),
   };
 
