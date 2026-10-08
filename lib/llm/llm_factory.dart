@@ -17,6 +17,7 @@ enum LLMProvider {
   claude,
   ollama,
   ollamaCloud,
+  omniroute,
   deepseek,
   gemini,
   foundry,
@@ -44,6 +45,8 @@ class LLMFactory {
         return OllamaClient(baseUrl: baseUrl);
       case LLMProvider.ollamaCloud:
         return OllamaClient(baseUrl: baseUrl, apiKey: apiKey, isCloud: true);
+      case LLMProvider.omniroute:
+        return OpenAIClient(apiKey: apiKey, baseUrl: baseUrl);
       case LLMProvider.gemini:
         return GeminiClient(apiKey: apiKey, baseUrl: baseUrl);
       case LLMProvider.foundry:
@@ -76,7 +79,8 @@ class LLMFactoryHelper {
     "claude-code": LLMProvider.claudeCode,
     "deepseek": LLMProvider.deepseek,
     "ollama": LLMProvider.ollama,
-    "ollama-cloud": LLMProvider.ollamaCloud,  
+    "ollama-cloud": LLMProvider.ollamaCloud,
+    "omniroute": LLMProvider.omniroute,
     "gemini": LLMProvider.gemini,
     "foundry": LLMProvider.foundry,
     "copilot": LLMProvider.copilot,
