@@ -94,6 +94,9 @@ class GeneralSetting {
   int maxMessages;
   int maxLoops;
 
+  // Workflow settings
+  bool unlimitedToolTimeout = false;
+
   // 代理设置
   bool enableProxy = false;
   String proxyType = 'HTTP'; // HTTP, HTTPS, SOCKS4, SOCKS5
@@ -110,6 +113,7 @@ class GeneralSetting {
     this.locale = 'en',
     this.maxMessages = 50,
     this.maxLoops = 100,
+    this.unlimitedToolTimeout = false,
     this.enableProxy = false,
     this.proxyType = 'HTTP',
     this.proxyHost = '',
@@ -127,6 +131,7 @@ class GeneralSetting {
       'locale': locale,
       'maxMessages': maxMessages,
       'maxLoops': maxLoops,
+      'unlimitedToolTimeout': unlimitedToolTimeout,
       'enableProxy': enableProxy,
       'proxyType': proxyType,
       'proxyHost': proxyHost,
@@ -145,6 +150,7 @@ class GeneralSetting {
       locale: json['locale'] as String? ?? 'en',
       maxMessages: json['maxMessages'] as int? ?? 50,
       maxLoops: json['maxLoops'] as int? ?? 100,
+      unlimitedToolTimeout: json['unlimitedToolTimeout'] as bool? ?? false,
       enableProxy: json['enableProxy'] as bool? ?? false,
       proxyType: json['proxyType'] as String? ?? 'HTTP',
       proxyHost: json['proxyHost'] as String? ?? '',
@@ -437,6 +443,7 @@ class SettingsProvider extends ChangeNotifier {
     String? locale,
     int? maxMessages,
     int? maxLoops,
+    bool? unlimitedToolTimeout,
     bool? enableProxy,
     String? proxyType,
     String? proxyHost,
@@ -454,6 +461,7 @@ class SettingsProvider extends ChangeNotifier {
       locale: locale ?? _generalSetting.locale,
       maxMessages: maxMessages ?? _generalSetting.maxMessages,
       maxLoops: maxLoops ?? _generalSetting.maxLoops,
+      unlimitedToolTimeout: unlimitedToolTimeout ?? _generalSetting.unlimitedToolTimeout,
       enableProxy: enableProxy ?? _generalSetting.enableProxy,
       proxyType: proxyType ?? _generalSetting.proxyType,
       proxyHost: proxyHost ?? _generalSetting.proxyHost,
