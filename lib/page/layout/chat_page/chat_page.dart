@@ -537,8 +537,10 @@ class _ChatPageState extends State<ChatPage> {
     // addUserMessage:false + empty text => no visible user bubble.
 
     setState(() {
-      last.finishReason = null;
-      _parentMessageId = last.messageId;
+      if (last != null) {
+        last.finishReason = null;
+        _parentMessageId = last.messageId;
+      }
       _isLoading = true;
       _isCancelled = false;
       _currentLoop = 0; // fresh loop budget for the continuation
