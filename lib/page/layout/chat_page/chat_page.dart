@@ -40,6 +40,7 @@ class _ChatPageState extends State<ChatPage> {
   String _parentMessageId = ''; // Parent message ID
   bool _isCancelled = false; // Indicates if the current operation has been cancelled by the user
   bool _isWaiting = false; // Indicates if the system is waiting for a response from the LLM
+  String? _lastStreamFinishReason; // Captured from the last stream chunk
 
   // GlobalKey for InputArea to access focus methods
   final GlobalKey<InputAreaState> _inputAreaKey = GlobalKey<InputAreaState>();
@@ -383,6 +384,7 @@ class _ChatPageState extends State<ChatPage> {
         messages: _isWaiting ? [..._messages, ChatMessage(content: '', role: MessageRole.loading)] : _messages.toList(),
         onRetry: _onRetry,
         onSwitch: _onSwitch,
+        onContinue: _onContinue,
       ),
     );
   }
@@ -509,6 +511,44 @@ class _ChatPageState extends State<ChatPage> {
     }
 
     return parentMessage;
+  }
+
+  Future<void> _onContinue() async {
+    if (_messages.isEmpty) return;
+    final last = _messages.last;
+    if (last.role != MessageRole.assistant) return;
+    if (last.content == null || last.content!.isEmpty) return;
+
+    // MCP-aware continuation:
+    // We route through _handleSubmitted (not just _processLLMResponse)
+    // so that the full tool-call loop resumes:
+    //   1. _checkNeedToolCall() re-evaluates the last message
+    //   2. _runFunctionEvents queue is drained (if any pending)
+    //   3. _sendToolCallAndProcessResponse() re-invokes MCP tools
+    //   4. _processLLMResponse() streams the LLM's continuation
+    // addUserMessage:false + empty text => no visible user bubble.
+
+    setState(() {
+      last.finishReason = null;
+      _parentMessageId = last.messageId;
+      _isLoading = true;
+      _isCancelled = false;
+      _currentLoop = 0; // fresh loop budget for the continuation
+    });
+
+    try {
+      await _handleSubmitted(
+        SubmitData('', []),
+        addUserMessage: false,
+      );
+    } catch (e, st) {
+      _handleError(e, st);
+      await _updateChat();
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   Future<void> _onRetry(ChatMessage message) async {
@@ -777,6 +817,14 @@ class _ChatPageState extends State<ChatPage> {
 
     _initializeAssistantResponse();
     await _processResponseStream(stream);
+    if (_messages.isNotEmpty && _messages.last.role == MessageRole.assistant) {
+      if (_isCancelled) {
+        _messages.last.finishReason = 'cancelled';
+      } else if (_lastStreamFinishReason != null) {
+        _messages.last.finishReason = _lastStreamFinishReason;
+      }
+      _lastStreamFinishReason = null;
+    }
     Logger.root.info('End processing LLM response');
   }
 
@@ -833,6 +881,7 @@ class _ChatPageState extends State<ChatPage> {
     bool isFirstChunk = true;
     LLMResponse? lastChunk;
     await for (final chunk in stream) {
+      if (chunk.finishReason != null) _lastStreamFinishReason = chunk.finishReason;
       if (isFirstChunk) {
         setState(() {
           _isWaiting = false;
