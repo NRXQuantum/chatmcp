@@ -37,6 +37,7 @@ class _GeneralSettingsState extends State<GeneralSettings> {
                       _buildThemeCard(context),
                       _buildLocaleCard(context),
                       _buildAvatarCard(context),
+                      _buildWorkflowCard(context),
                       if (!kIsBrowser) _buildProxyCard(context),
                       _buildSystemPromptCard(context),
                       if (!kIsBrowser) _buildMaintenanceCard(context),
@@ -209,6 +210,37 @@ class _GeneralSettingsState extends State<GeneralSettings> {
                     },
                   ),
                 ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildWorkflowCard(BuildContext context) {
+    return Consumer<SettingsProvider>(
+      builder: (context, settings, child) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionTitle(context, 'Workflow Settings', CupertinoIcons.clock),
+            Card(
+              elevation: 0,
+              color: Theme.of(context).colorScheme.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Theme.of(context).colorScheme.outline.withAlpha(50)),
+              ),
+              child: SettingSwitch(
+                title: 'Unlimited Tool Timeout',
+                subtitle: 'When enabled, MCP tool calls will not time out. Useful for long-running tasks.',
+                value: settings.generalSetting.unlimitedToolTimeout,
+                titleFontSize: 14,
+                subtitleFontSize: 12,
+                onChanged: (bool value) {
+                  settings.updateGeneralSettingsPartially(unlimitedToolTimeout: value);
+                },
               ),
             ),
           ],
