@@ -282,6 +282,15 @@ final List<LLMProviderSetting> defaultApiSettings = [
   ),
   LLMProviderSetting(
     apiKey: '',
+    apiEndpoint: 'http://localhost:20128/v1',
+    apiStyle: 'openai',
+    providerId: 'omniroute',
+    providerName: 'OmniRoute',
+    icon: 'omniroute',
+    custom: false,
+  ),
+  LLMProviderSetting(
+    apiKey: '',
     apiEndpoint: 'https://api.302.ai/v1',
     apiStyle: 'openai',
     providerId: '302.AI',
