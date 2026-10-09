@@ -93,6 +93,9 @@ class ChatMessage {
 
     json['messageId'] = messageId;
     json['parentMessageId'] = parentMessageId;
+    if (finishReason != null) {
+      json['finishReason'] = finishReason;
+    }
     if (brotherMessageIds != null) {
       json['brotherMessageIds'] = brotherMessageIds;
     }
@@ -129,6 +132,7 @@ class ChatMessage {
       tokenUsage: json['tokenUsage'] != null ? TokenUsage.fromJson(Map<String, dynamic>.from(json['tokenUsage'])) : null,
       toolCalls: toolCalls,
       files: files,
+      finishReason: json['finishReason'] as String?,
       messageId: messageId,
       parentMessageId: parentMessageId,
     );
@@ -143,7 +147,7 @@ class ChatMessage {
     return DbChatMessage(chatId: chatId, messageId: messageId, parentMessageId: parentMessageId, body: toString());
   }
 
-  ChatMessage copyWith({String? messageId, String? parentMessageId, String? content, MessageRole? role, TokenUsage? tokenUsage}) {
+  ChatMessage copyWith({String? messageId, String? parentMessageId, String? content, MessageRole? role, TokenUsage? tokenUsage, String? finishReason}) {
     return ChatMessage(
       messageId: messageId ?? this.messageId,
       parentMessageId: parentMessageId ?? this.parentMessageId,
@@ -155,6 +159,7 @@ class ChatMessage {
       toolCallId: toolCallId,
       toolCalls: toolCalls,
       files: files,
+      finishReason: finishReason ?? this.finishReason,
     );
   }
 }
