@@ -840,8 +840,17 @@ class _ChatPageState extends State<ChatPage> {
       ),
     );
 
+    // Capture the cancelled state BEFORE the stream, because
+    // _processResponseStream() resets _isCancelled to false at its end.
+    final wasCancelled = _isCancelled;
+
     _initializeAssistantResponse();
     await _processResponseStream(stream);
+
+    // Re-check both: wasCancelled (captured) OR current flag
+    // (the stream may have been cancelled during execution).
+    final cancelledAtEnd = wasCancelled || _isCancelled;
+
     if (_messages.isNotEmpty) {
       // Walk back to find the last non-empty assistant message
       int idx = -1;
@@ -854,7 +863,7 @@ class _ChatPageState extends State<ChatPage> {
         }
       }
       if (idx != -1) {
-        if (_isCancelled) {
+        if (cancelledAtEnd) {
           _messages[idx].finishReason = 'cancelled';
         } else if (_lastStreamFinishReason != null) {
           _messages[idx].finishReason = _lastStreamFinishReason;
