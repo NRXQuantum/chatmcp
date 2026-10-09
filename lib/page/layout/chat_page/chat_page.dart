@@ -41,6 +41,7 @@ class _ChatPageState extends State<ChatPage> {
   bool _isCancelled = false; // Indicates if the current operation has been cancelled by the user
   bool _isWaiting = false; // Indicates if the system is waiting for a response from the LLM
   String? _lastStreamFinishReason; // Captured from the last stream chunk
+  bool _wasCancelledDuringStream = false; // True if user pressed stop while streaming
 
   // GlobalKey for InputArea to access focus methods
   final GlobalKey<InputAreaState> _inputAreaKey = GlobalKey<InputAreaState>();
@@ -840,16 +841,14 @@ class _ChatPageState extends State<ChatPage> {
       ),
     );
 
-    // Capture the cancelled state BEFORE the stream, because
-    // _processResponseStream() resets _isCancelled to false at its end.
-    final wasCancelled = _isCancelled;
+    // Reset the per-stream cancellation tracker.
+    _wasCancelledDuringStream = false;
 
     _initializeAssistantResponse();
     await _processResponseStream(stream);
 
-    // Re-check both: wasCancelled (captured) OR current flag
-    // (the stream may have been cancelled during execution).
-    final cancelledAtEnd = wasCancelled || _isCancelled;
+    // Cancelled either before, during, or after the stream.
+    final cancelledAtEnd = _isCancelled || _wasCancelledDuringStream;
 
     if (_messages.isNotEmpty) {
       // Walk back to find the last non-empty assistant message
@@ -944,7 +943,10 @@ class _ChatPageState extends State<ChatPage> {
         });
         isFirstChunk = false;
       }
-      if (_isCancelled) break;
+      if (_isCancelled) {
+        _wasCancelledDuringStream = true;
+        break;
+      }
       _currentResponse += chunk.content ?? '';
       if (_messages.isNotEmpty) {
         _messages.last = _messages.last.copyWith(content: _currentResponse);
@@ -968,7 +970,9 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {});
     }
 
-    _isCancelled = false;
+    // NOTE: Do NOT reset _isCancelled here.
+    // It is reset at the start of _handleSubmitted.
+    // Resetting here would lose the user's stop signal.
   }
 
   Future<void> _updateChat() async {
