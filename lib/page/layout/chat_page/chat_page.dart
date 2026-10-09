@@ -550,6 +550,7 @@ class _ChatPageState extends State<ChatPage> {
       await _handleSubmitted(
         SubmitData('', []),
         addUserMessage: false,
+        forceLLMResponse: true,
       );
     } catch (e, st) {
       _handleError(e, st);
@@ -666,7 +667,11 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   // Message submission processing
-  Future<void> _handleSubmitted(SubmitData data, {bool addUserMessage = true}) async {
+  Future<void> _handleSubmitted(
+    SubmitData data, {
+    bool addUserMessage = true,
+    bool forceLLMResponse = false,
+  }) async {
     setState(() {
       _isCancelled = false;
     });
@@ -679,6 +684,16 @@ class _ChatPageState extends State<ChatPage> {
     try {
       final generalSetting = ProviderManager.settingsProvider.generalSetting;
       final maxLoops = generalSetting.maxLoops;
+
+      // Continuation path: the last message is an assistant bubble
+      // (not user, no <function> tags), so _checkNeedToolCall()
+      // returns false and the while-loop below would be skipped.
+      // We force at least one LLM pass so the model actually
+      // continues writing from where it stopped.
+      if (forceLLMResponse) {
+        await _processLLMResponse();
+        _currentLoop++;
+      }
 
       while (await _checkNeedToolCall()) {
         if (_currentLoop > maxLoops) {
