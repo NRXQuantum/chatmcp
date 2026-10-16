@@ -94,6 +94,10 @@ class _ArtifactAntArtifactWidgetState extends State<ArtifactAntArtifactWidget> {
   @override
   Widget build(BuildContext context) {
     String title = widget.attributes['title'] ?? '';
+    if (title.isEmpty) {
+      final type = widget.attributes['type'] ?? widget.attributes['language'] ?? 'Artifact';
+      title = type;
+    }
     bool isClosed = widget.attributes['closed'] == 'true';
     String hash = widget.attributes['hash'] ?? '';
 
@@ -111,15 +115,22 @@ class _ArtifactAntArtifactWidgetState extends State<ArtifactAntArtifactWidget> {
           border: Border.all(color: AppColors.getArtifactBorderColor(context), width: 1.0),
           borderRadius: BorderRadius.circular(8.0),
         ),
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            Icon(Icons.code, size: 16, color: Theme.of(context).primaryColor),
+            const SizedBox(width: 8),
             Expanded(
-              child: Text(title, overflow: TextOverflow.ellipsis, maxLines: 1, style: TextStyle(fontSize: 14)),
+              child: Text(
+                title,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              ),
             ),
+            const SizedBox(width: 6),
             if (isClosed)
-              Icon(Icons.check_circle, color: Colors.green)
+              const Icon(Icons.check_circle, color: Colors.green, size: 16)
             else
               SizedBox(
                 width: 12,
