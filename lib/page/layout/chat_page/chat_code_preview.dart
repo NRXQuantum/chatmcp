@@ -215,25 +215,38 @@ class _ChatCodePreviewState extends State<ChatCodePreview> {
     }
 
     String language = widget.codePreviewEvent.attributes['type'] ?? '';
-    if (language.contains("react")) {
+    if (language.isEmpty || language == 'application/vnd.ant.code' || language == 'code') {
+      language = widget.codePreviewEvent.attributes['language'] ?? '';
+    }
+    final lang = language.toLowerCase();
+
+    bool isHtml = lang.contains("html") || lang.contains("htm") || lang.contains("svg");
+    bool isJs = lang == "js" || lang == "javascript" || lang.contains("javascript");
+    bool isCss = lang == "css";
+    bool isReact = lang.contains("react") || lang.contains("jsx") || lang.contains("tsx");
+    bool isVue = lang.contains("vue");
+
+    if (isReact) {
       language = "react";
       _supportPreview = true;
-    } else if (language.contains("vue")) {
+    } else if (isVue) {
       language = "vue";
-    } else if (language.contains("html")) {
+    } else if (isHtml) {
       language = "html";
       _supportPreview = true;
-    } else if (language.contains("css")) {
-      language = "css";
-    } else if (language.contains("js")) {
+    } else if (isJs) {
       language = "javascript";
-    } else if (language.contains("ts")) {
+      _supportPreview = true;
+    } else if (isCss) {
+      language = "css";
+      _supportPreview = true;
+    } else if (lang.contains("ts")) {
       language = "typescript";
-    } else if (language.contains("python")) {
+    } else if (lang.contains("python")) {
       language = "python";
-    } else if (language.contains("java")) {
+    } else if (lang.contains("java")) {
       language = "java";
-    } else if (language.contains("c")) {
+    } else if (lang.contains("c")) {
       language = "c";
     }
 
@@ -278,9 +291,13 @@ class _ChatCodePreviewState extends State<ChatCodePreview> {
           _buildToolBar(),
           Expanded(
             child: !_showCode
-                ? (language == "html"
-                      ? HtmlView(html: codePreviewEvent?.textContent ?? '')
-                      : _buildSandboxWebView(sandboxServerPort: sandboxServerPort))
+                ? (isHtml
+                      ? HtmlView(html: codePreviewEvent?.textContent ?? '', autoHeight: false)
+                      : isJs
+                          ? HtmlView(html: wrapJsInHtml(codePreviewEvent?.textContent ?? ''), autoHeight: false)
+                          : isCss
+                              ? HtmlView(html: wrapCssInHtml(codePreviewEvent?.textContent ?? ''), autoHeight: false)
+                              : _buildSandboxWebView(sandboxServerPort: sandboxServerPort))
                 : SingleChildScrollView(
                     child: SizedBox(
                       width: double.infinity,
