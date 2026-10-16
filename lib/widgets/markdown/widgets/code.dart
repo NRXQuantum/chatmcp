@@ -59,12 +59,36 @@ class CodeBlockNode extends ElementNode {
       ),
     );
 
-    if (language != 'html') {
+    final langLower = (language ?? '').toLowerCase();
+    final bool isArtifactLanguage = const [
+      'html', 'htm', 'svg', 'javascript', 'js', 'css', 'react', 'jsx', 'tsx', 'vue'
+    ].contains(langLower);
+
+    if (!isArtifactLanguage) {
       return WidgetSpan(child: preConfig.wrapper?.call(widget, content, language ?? '') ?? widget);
     }
 
+    String title = '';
+    if (langLower.contains('html') || langLower.contains('htm')) {
+      final titleMatch = RegExp(r'<title>(.*?)</title>', caseSensitive: false, dotAll: true).firstMatch(content);
+      if (titleMatch != null && titleMatch.group(1) != null && titleMatch.group(1)!.trim().isNotEmpty) {
+        title = titleMatch.group(1)!.trim();
+      }
+    }
+    if (title.isEmpty) {
+      final firstLine = content.trimLeft().split('\n').firstOrNull?.trim() ?? '';
+      if (firstLine.startsWith('//') || firstLine.startsWith('/*') || firstLine.startsWith('#')) {
+        title = firstLine.replaceAll(RegExp(r'^[\s/*#]+|[\s/*#]+$'), '').trim();
+      }
+    }
+    if (title.isEmpty) {
+      title = langLower == 'html'
+          ? 'HTML Preview'
+          : (langLower == 'js' || langLower == 'javascript' ? 'JavaScript' : '${langLower.toUpperCase()} Code');
+    }
+
     final widget1 = ArtifactAntArtifactWidget(content, {
-      'title': content.length > 20 ? content.substring(0, 20) : content,
+      'title': title,
       'closed': isClosed.toString(),
       'type': language ?? '',
     });
@@ -105,9 +129,11 @@ class _CodeBlockState extends State<_CodeBlock> with AutomaticKeepAliveClientMix
   Widget? _previewWidget;
 
   // supported languages for preview
-  static const List<String> _supportedLanguages = ['mermaid', 'html', 'svg'];
+  static const List<String> _supportedLanguages = [
+    'mermaid', 'html', 'htm', 'svg', 'javascript', 'js', 'css'
+  ];
   // HTML related languages
-  static const List<String> _htmlLanguages = ['html', 'svg'];
+  static const List<String> _htmlLanguages = ['html', 'htm', 'svg'];
 
   @override
   bool get wantKeepAlive => true;
@@ -120,7 +146,8 @@ class _CodeBlockState extends State<_CodeBlock> with AutomaticKeepAliveClientMix
 
   /// initialize preview state
   void _initializePreviewState() {
-    final bool supportPreview = _supportedLanguages.contains(widget.language);
+    final lang = widget.language.toLowerCase();
+    final bool supportPreview = _supportedLanguages.contains(lang);
 
     if (supportPreview) {
       _previewWidget = _buildPreviewWidget();
@@ -137,10 +164,15 @@ class _CodeBlockState extends State<_CodeBlock> with AutomaticKeepAliveClientMix
 
   /// build preview component
   Widget? _buildPreviewWidget() {
-    if (widget.language == 'mermaid') {
+    final lang = widget.language.toLowerCase();
+    if (lang == 'mermaid') {
       return MermaidDiagramView(key: ValueKey(widget.code), code: widget.code);
-    } else if (_htmlLanguages.contains(widget.language)) {
-      return HtmlView(key: ValueKey(widget.code), html: widget.code);
+    } else if (_htmlLanguages.contains(lang)) {
+      return HtmlView(key: ValueKey(widget.code), html: widget.code, autoHeight: true);
+    } else if (lang == 'javascript' || lang == 'js') {
+      return HtmlView(key: ValueKey(widget.code), html: wrapJsInHtml(widget.code), autoHeight: true);
+    } else if (lang == 'css') {
+      return HtmlView(key: ValueKey(widget.code), html: wrapCssInHtml(widget.code), autoHeight: true);
     }
     return null;
   }
