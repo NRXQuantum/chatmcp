@@ -187,10 +187,11 @@ class _HtmlViewState extends State<HtmlView> {
       ),
       onWebViewCreated: (controller) => _initWebView(controller),
       onLoadStop: (controller, url) async {
-        // === মোবাইল রেসপন্সিভ অটো-ফিক্স ===
+        // === মোবাইল রেসপন্সিভ এবং এডিটেবল অটো-ফিক্স ===
         try {
           await controller.evaluateJavascript(source: """
             (function() {
+              // ১. মোবাইলের জন্য রেসপন্সিভ ফিক্স
               var style = document.createElement('style');
               style.innerHTML = `
                 @media (max-width: 768px) {
@@ -204,6 +205,35 @@ class _HtmlViewState extends State<HtmlView> {
                 }
               `;
               document.head.appendChild(style);
+
+              // ২. স্লাইডার ভ্যালু ক্লিক করে এডিট করার ফিচার
+              setTimeout(function() {
+                document.querySelectorAll('input[type="range"]').forEach(function(slider) {
+                  var display = slider.nextElementSibling;
+                  if (display && display.classList.contains('value-display')) {
+                    display.style.cursor = 'pointer';
+                    display.style.textDecoration = 'underline dotted';
+                    display.title = 'Click to type exact value';
+                    
+                    display.addEventListener('click', function(e) {
+                      e.preventDefault();
+                      var currentVal = slider.value;
+                      var newVal = prompt('Enter a value:', currentVal);
+                      
+                      if (newVal !== null && newVal !== '') {
+                        var num = parseFloat(newVal);
+                        if (!isNaN(num)) {
+                          if (num < parseFloat(slider.min)) num = parseFloat(slider.min);
+                          if (num > parseFloat(slider.max)) num = parseFloat(slider.max);
+                          slider.value = num;
+                          slider.dispatchEvent(new Event('input'));
+                          display.textContent = num;
+                        }
+                      }
+                    });
+                  }
+                });
+              }, 500);
             })();
           """);
         } catch (e) { print("JS Inject Error: \$e"); }
