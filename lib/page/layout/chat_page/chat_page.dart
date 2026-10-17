@@ -694,11 +694,23 @@ class _ChatPageState extends State<ChatPage> {
       final index = _messages.indexWhere((m) => m.messageId == _editingMessage!.messageId);
       if (index != -1) {
         setState(() {
+          final oldMsg = _messages[index];
+          final newMsgId = Uuid().v4();
+          
           if (index < _messages.length - 1) {
             _messages.removeRange(index + 1, _messages.length);
           }
-          _messages[index] = _messages[index].copyWith(content: data.text.replaceAll('\n', '\n\n'));
-          _parentMessageId = _messages[index].messageId;
+          
+          // নতুন মেসেজ তৈরি করা (পুরনো মেসেজের মতো একই প্যারেন্ট দিয়ে, যাতে ব্রাঞ্চ তৈরি হয়)
+          _messages[index] = ChatMessage(
+            messageId: newMsgId,
+            parentMessageId: oldMsg.parentMessageId,
+            content: data.text.replaceAll('\n', '\n\n'),
+            role: MessageRole.user,
+            files: oldMsg.files,
+          );
+          
+          _parentMessageId = newMsgId;
           _editingMessage = null;
         });
         addUserMessage = false;
