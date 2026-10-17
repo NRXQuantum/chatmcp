@@ -53,23 +53,28 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # ==========================================
+      # 👇 এই অংশটুকু পরিবর্তন করা হয়েছে 👇
+      # ==========================================
       - name: Setup Android Signing
         if: matrix.apk_build && github.event_name != 'pull_request'
         shell: bash
         env:
-          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
-          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
-          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           mkdir -p android/app/keystore
-          if [ -n "$SIGNING_KEYSTORE" ]; then
-            echo "$SIGNING_KEYSTORE" | base64 -d > android/app/keystore/release.jks
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > android/app/keystore/release.jks
             echo "SIGNING_STORE_PATH=keystore/release.jks" >> "$GITHUB_ENV"
-            echo "SIGNING_KEY_ALIAS=$SIGNING_KEY_ALIAS" >> "$GITHUB_ENV"
-            echo "SIGNING_STORE_PASSWORD=$SIGNING_STORE_PASSWORD" >> "$GITHUB_ENV"
-            echo "SIGNING_KEY_PASSWORD=$SIGNING_KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_ALIAS=chatmcp" >> "$GITHUB_ENV"
+            echo "SIGNING_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
           fi
+      # ==========================================
+      # 👆 পরিবর্তন এখানে শেষ 👆
+      # ==========================================
 
       - name: Activate FastForge
         run: dart pub global activate fastforge
