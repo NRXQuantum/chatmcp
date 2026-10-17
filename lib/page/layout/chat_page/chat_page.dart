@@ -590,10 +590,11 @@ class _ChatPageState extends State<ChatPage> {
       _isLoading = true;
     });
 
-    await _handleSubmitted(
-      SubmitData(userMessage.content ?? '', (userMessage.files ?? []).map((f) => f as PlatformFile).toList()),
-      addUserMessage: false,
-    );
+          await _handleSubmitted(
+        SubmitData(userMessage.content ?? '', (userMessage.files ?? []).map((f) => f as PlatformFile).toList()),
+        addUserMessage: false,
+        forceLLMResponse: true,
+      );
   }
 
   /// function calling style tool use
@@ -1080,13 +1081,7 @@ class _ChatPageState extends State<ChatPage> {
     // Retrieves conversation thread starting from last user message
     List<ChatMessage> relevantMessages = messages.sublist(lastUserIndex);
 
-    // Resets parent IDs for long threads to maintain proper conversation flow
-    if (relevantMessages.length > 2) {
-      String secondMessageId = relevantMessages[1].messageId;
-      for (int i = 2; i < relevantMessages.length; i++) {
-        relevantMessages[i] = relevantMessages[i].copyWith(parentMessageId: secondMessageId);
-      }
-    }
+    // Branching tree kept intact
 
     return relevantMessages;
   }
