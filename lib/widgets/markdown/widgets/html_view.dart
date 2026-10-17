@@ -187,6 +187,28 @@ class _HtmlViewState extends State<HtmlView> {
       ),
       onWebViewCreated: (controller) => _initWebView(controller),
       onLoadStop: (controller, url) async {
+        // === মোবাইল রেসপন্সিভ অটো-ফিক্স ===
+        try {
+          await controller.evaluateJavascript(source: """
+            (function() {
+              var style = document.createElement('style');
+              style.innerHTML = `
+                @media (max-width: 768px) {
+                  body { padding: 10px !important; }
+                  .container, .wrapper, .row, .flex, main { 
+                    display: flex !important; 
+                    flex-direction: column !important; 
+                    grid-template-columns: 1fr !important; 
+                  }
+                  canvas { max-width: 100% !important; height: 300px !important; }
+                }
+              `;
+              document.head.appendChild(style);
+            })();
+          """);
+        } catch (e) { print("JS Inject Error: \$e"); }
+        // ===================================
+        
         if (!widget.autoHeight) return;
         try {
           final result = await controller.evaluateJavascript(
