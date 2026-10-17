@@ -11,6 +11,7 @@ import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 /// - [onRetry] The function to retry the message.
 /// - [onSwitch] The function to switch the message to the another message.
 class MessageList extends StatefulWidget {
+  final Function(ChatMessage)? onEdit;
   final List<ChatMessage> messages;
   final Function(ChatMessage) onRetry;
   final Function(String messageId) onSwitch;
