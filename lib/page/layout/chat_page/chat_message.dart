@@ -123,6 +123,7 @@ class ChatUIMessage extends StatelessWidget {
   final Function(ChatMessage) onRetry;
   final Function(String messageId) onSwitch;
   final VoidCallback? onContinue;
+  final Function(ChatMessage)? onEdit;
   final bool isLast;
 
   const ChatUIMessage({
@@ -131,6 +132,7 @@ class ChatUIMessage extends StatelessWidget {
     required this.onRetry,
     required this.onSwitch,
     this.onContinue,
+    this.onEdit,
     this.isLast = false,
   });
 
@@ -212,6 +214,7 @@ class ChatUIMessage extends StatelessWidget {
                         isUser: isUser,
                         isLast: isLast,
                         onContinue: onContinue,
+                        onEdit: onEdit,
                       ),
                   ],
                 ),

@@ -386,8 +386,13 @@ class _ChatPageState extends State<ChatPage> {
         onRetry: _onRetry,
         onSwitch: _onSwitch,
         onContinue: _onContinue,
+        onEdit: _onEdit,
       ),
     );
+  }
+
+  void _onEdit(ChatMessage message) {
+    _inputAreaKey.currentState?.setText(message.content ?? '');
   }
 
   void _onSwitch(String messageId) {

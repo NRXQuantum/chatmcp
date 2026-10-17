@@ -48,6 +48,13 @@ class InputArea extends StatefulWidget {
 }
 
 class InputAreaState extends State<InputArea> {
+  void setText(String text) {
+    textController.text = text;
+    textController.selection = TextSelection.fromPosition(
+      TextPosition(offset: text.length),
+    );
+  }
+
   List<PlatformFile> _selectedFiles = [];
   final TextEditingController textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();

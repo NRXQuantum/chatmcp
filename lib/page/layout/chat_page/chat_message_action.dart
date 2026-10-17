@@ -11,6 +11,7 @@ class MessageActions extends StatelessWidget {
   final bool isUser;
   final bool isLast;
   final VoidCallback? onContinue;
+  final Function(ChatMessage)? onEdit;
 
   const MessageActions({
     super.key,
@@ -20,6 +21,7 @@ class MessageActions extends StatelessWidget {
     this.isUser = false,
     this.isLast = false,
     this.onContinue,
+    this.onEdit,
   });
 
   @override
@@ -41,6 +43,18 @@ class MessageActions extends StatelessWidget {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t.copiedToClipboard), duration: const Duration(seconds: 2)));
             },
           ),
+          // Edit button - only for user messages
+          if (isUser && onEdit != null)
+            IconButton(
+              iconSize: 14,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () {
+                onEdit!(messages.last);
+              },
+              tooltip: 'Edit',
+            ),
           // Retry button - only for assistant messages
           if (!isUser)
             IconButton(

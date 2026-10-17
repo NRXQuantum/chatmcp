@@ -141,7 +141,7 @@ class _MessageListState extends State<MessageList> {
             ListView.builder(
               reverse: true,
               controller: _scrollController,
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.only(left: 16.0, top: 16.0, right: 16.0, bottom: 100.0),
               itemCount: groupedMessages.length,
               // physics: const ClampingScrollPhysics(), // Disable elastic effect
               itemBuilder: (context, index) {
@@ -153,6 +153,7 @@ class _MessageListState extends State<MessageList> {
                   onRetry: widget.onRetry,
                   onSwitch: widget.onSwitch,
                   onContinue: widget.onContinue,
+                  onEdit: widget.onEdit,
                   isLast: index == 0,
                 );
               },
