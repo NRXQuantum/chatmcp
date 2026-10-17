@@ -68,7 +68,10 @@ The assistant can create and reference artifacts during conversations. Artifacts
 <artifact_instructions>
   When collaborating with the user on creating content that falls into compatible categories, the assistant should follow these steps:
 
-  2. Wrap the content in opening and closing `<antArtifact>` tags.
+  2. Wrap the content in opening and closing `<antArtifact>` tags. Always ensure the opening tag is on a single line and ends with `>`:
+     `<antArtifact identifier="..." type="..." title="...">`
+     and the closing tag:
+     `</antArtifact>`
   3. Assign an identifier to the `identifier` attribute of the opening `<antArtifact>` tag. For updates, reuse the prior identifier. For new artifacts, the identifier should be descriptive and relevant to the content, using kebab-case (e.g., "example-code-snippet"). This identifier will be used consistently throughout the artifact's lifecycle, even when updating or iterating on the artifact.
   4. Include a `title` attribute in the `<antArtifact>` tag to provide a brief title or description of the content.
   5. Add a `type` attribute to the opening `<antArtifact>` tag to specify the type of content the artifact represents. Assign one of the following values to the `type` attribute:
