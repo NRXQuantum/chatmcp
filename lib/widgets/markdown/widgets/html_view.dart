@@ -183,7 +183,7 @@ class _HtmlViewState extends State<HtmlView> {
         disableHorizontalScroll: false,
         verticalScrollBarEnabled: true,
         horizontalScrollBarEnabled: true,
-        overScrollMode: OverScrollMode.OVER_SCROLL_ALWAYS,
+        overScrollMode: OverScrollMode.ALWAYS,
       ),
       onWebViewCreated: (controller) => _initWebView(controller),
       onLoadStop: (controller, url) async {
