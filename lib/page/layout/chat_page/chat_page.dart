@@ -45,6 +45,7 @@ class _ChatPageState extends State<ChatPage> {
 
   // GlobalKey for InputArea to access focus methods
   final GlobalKey<InputAreaState> _inputAreaKey = GlobalKey<InputAreaState>();
+  ChatMessage? _editingMessage;
 
   // Stores image bytes of the widget for sharing functionality
   Uint8List? bytes;
@@ -392,6 +393,9 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _onEdit(ChatMessage message) {
+    setState(() {
+      _editingMessage = message;
+    });
     _inputAreaKey.currentState?.setText(message.content ?? '');
   }
 
@@ -406,6 +410,9 @@ class _ChatPageState extends State<ChatPage> {
   void _handleTextChanged(String text) {
     setState(() {
       _isComposing = text.isNotEmpty;
+      if (text.isEmpty) {
+        _editingMessage = null;
+      }
     });
   }
 
@@ -682,6 +689,22 @@ class _ChatPageState extends State<ChatPage> {
       _isCancelled = false;
     });
     final files = data.files.map((file) => platformFileToFile(file)).toList();
+
+    if (_editingMessage != null && data.text.isNotEmpty) {
+      final index = _messages.indexWhere((m) => m.messageId == _editingMessage!.messageId);
+      if (index != -1) {
+        setState(() {
+          if (index < _messages.length - 1) {
+            _messages.removeRange(index + 1, _messages.length);
+          }
+          _messages[index] = _messages[index].copyWith(content: data.text.replaceAll('\n', '\n\n'));
+          _parentMessageId = _messages[index].messageId;
+          _editingMessage = null;
+        });
+        addUserMessage = false;
+        forceLLMResponse = true;
+      }
+    }
 
     if (addUserMessage && data.text.isNotEmpty) {
       _addUserMessage(data.text, files);
