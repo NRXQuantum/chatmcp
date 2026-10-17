@@ -690,11 +690,11 @@ class _ChatPageState extends State<ChatPage> {
     });
     final files = data.files.map((file) => platformFileToFile(file)).toList();
 
-        if (_editingMessage != null && data.text.isNotEmpty) {
+            if (_editingMessage != null && data.text.isNotEmpty) {
       final index = _messages.indexWhere((m) => m.messageId == _editingMessage!.messageId);
       if (index != -1) {
         setState(() {
-          _isLoading = true; // স্টপ বাটন দেখানোর জন্য
+          _isLoading = true; // ১. স্টপ বাটন দেখানোর জন্য
           final oldMsg = _messages[index];
           final newMsgId = Uuid().v4();
 
@@ -705,31 +705,31 @@ class _ChatPageState extends State<ChatPage> {
           final newMsg = ChatMessage(
             messageId: newMsgId,
             parentMessageId: oldMsg.parentMessageId,
-            content: data.text.replaceAll('
-', '
-
-'),
+            content: data.text.replaceAll('\n', '\n\n'),
             role: MessageRole.user,
             files: oldMsg.files,
           );
-          
+
           _messages[index] = newMsg;
-          
-          // ব্রাঞ্চিং (Branching) ঠিক করার জন্য _allMessages আপডেট করা
           _allMessages.add(newMsg);
+
+          // ২. ব্রাঞ্চিং (Branching) ঠিক করার জন্য
           final siblings = _allMessages.where((m) => m.parentMessageId == oldMsg.parentMessageId).toList();
-          if (siblings.isNotEmpty) {
-            final siblingIds = siblings.map((m) => m.messageId).toList();
-            for (var s in siblings) {
-              s.brotherMessageIds = siblingIds;
-            }
+          final siblingIds = siblings.map((m) => m.messageId).toList();
+          
+          for (var s in siblings) {
+            s.brotherMessageIds = siblingIds;
           }
           
           _parentMessageId = newMsgId;
           _editingMessage = null;
         });
+        
         addUserMessage = false;
         forceLLMResponse = true;
+        
+        // ৩. UI আপডেট হওয়ার জন্য সামান্য সময় দেওয়া (স্টপ বাটন নিশ্চিত করতে)
+        await Future.delayed(const Duration(milliseconds: 50));
       }
     }
 
