@@ -690,25 +690,40 @@ class _ChatPageState extends State<ChatPage> {
     });
     final files = data.files.map((file) => platformFileToFile(file)).toList();
 
-    if (_editingMessage != null && data.text.isNotEmpty) {
+        if (_editingMessage != null && data.text.isNotEmpty) {
       final index = _messages.indexWhere((m) => m.messageId == _editingMessage!.messageId);
       if (index != -1) {
         setState(() {
+          _isLoading = true; // স্টপ বাটন দেখানোর জন্য
           final oldMsg = _messages[index];
           final newMsgId = Uuid().v4();
-          
+
           if (index < _messages.length - 1) {
             _messages.removeRange(index + 1, _messages.length);
           }
-          
-          // নতুন মেসেজ তৈরি করা (পুরনো মেসেজের মতো একই প্যারেন্ট দিয়ে, যাতে ব্রাঞ্চ তৈরি হয়)
-          _messages[index] = ChatMessage(
+
+          final newMsg = ChatMessage(
             messageId: newMsgId,
             parentMessageId: oldMsg.parentMessageId,
-            content: data.text.replaceAll('\n', '\n\n'),
+            content: data.text.replaceAll('
+', '
+
+'),
             role: MessageRole.user,
             files: oldMsg.files,
           );
+          
+          _messages[index] = newMsg;
+          
+          // ব্রাঞ্চিং (Branching) ঠিক করার জন্য _allMessages আপডেট করা
+          _allMessages.add(newMsg);
+          final siblings = _allMessages.where((m) => m.parentMessageId == oldMsg.parentMessageId).toList();
+          if (siblings.isNotEmpty) {
+            final siblingIds = siblings.map((m) => m.messageId).toList();
+            for (var s in siblings) {
+              s.brotherMessageIds = siblingIds;
+            }
+          }
           
           _parentMessageId = newMsgId;
           _editingMessage = null;

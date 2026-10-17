@@ -95,7 +95,7 @@ class MessageActions extends StatelessWidget {
               ),
             ),
           // Branch switch - only for assistant messages
-          if (!isUser && messages.first.brotherMessageIds != null && messages.first.brotherMessageIds!.isNotEmpty) _buildBranchSwitchWidget(messages),
+          if (messages.first.brotherMessageIds != null && messages.first.brotherMessageIds!.isNotEmpty) _buildBranchSwitchWidget(messages),
         ],
       ),
     );
