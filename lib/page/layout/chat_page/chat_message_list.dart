@@ -21,6 +21,7 @@ class MessageList extends StatefulWidget {
     required this.onRetry,
     required this.onSwitch,
     required this.onContinue,
+    this.onEdit,
   });
 
   @override
