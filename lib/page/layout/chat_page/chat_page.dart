@@ -400,9 +400,24 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _onSwitch(String messageId) {
-    final messages = _getTreeMessages(messageId, _allMessages);
+    String targetId = messageId;
+    ChatMessage? targetMsg;
+    for (var m in _allMessages) {
+      if (m.messageId == messageId) {
+        targetMsg = m;
+        break;
+      }
+    }
+    if (targetMsg != null && targetMsg.role == MessageRole.user) {
+      final aiResponses = _allMessages.where((m) => m.parentMessageId == messageId).toList();
+      if (aiResponses.isNotEmpty) {
+        targetId = aiResponses.last.messageId;
+      }
+    }
+    final messages = _getTreeMessages(targetId, _allMessages);
     setState(() {
       _messages = messages;
+      _parentMessageId = messages.last.messageId;
     });
   }
 
@@ -721,6 +736,7 @@ class _ChatPageState extends State<ChatPage> {
           for (var s in siblings) {
             s.brotherMessageIds = siblingIds;
           }
+          oldMsg.brotherMessageIds = siblingIds;
           
           _parentMessageId = newMsgId;
           _editingMessage = null;
