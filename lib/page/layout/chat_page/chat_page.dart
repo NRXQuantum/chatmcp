@@ -399,25 +399,39 @@ class _ChatPageState extends State<ChatPage> {
     _inputAreaKey.currentState?.setText(message.content ?? '');
   }
 
-  void _onSwitch(String messageId) {
+    void _onSwitch(String messageId) {
+    // ১. _allMessages এবং _messages একসাথে মিলিয়ে নেওয়া, যাতে নতুন এআই উত্তরটি বাদ না পড়ে
+    final combinedMessages = [..._allMessages];
+    for (var msg in _messages) {
+      if (!combinedMessages.any((m) => m.messageId == msg.messageId)) {
+        combinedMessages.add(msg);
+      }
+    }
+
     String targetId = messageId;
     ChatMessage? targetMsg;
-    for (var m in _allMessages) {
+    for (var m in combinedMessages) {
       if (m.messageId == messageId) {
         targetMsg = m;
         break;
       }
     }
+    
+    // ২. যদি ইউজার মেসেজ হয়, তবে তার সাথে যুক্ত এআই-এর উত্তর খোঁজা
     if (targetMsg != null && targetMsg.role == MessageRole.user) {
-      final aiResponses = _allMessages.where((m) => m.parentMessageId == messageId).toList();
+      final aiResponses = combinedMessages.where((m) => m.parentMessageId == messageId).toList();
       if (aiResponses.isNotEmpty) {
         targetId = aiResponses.last.messageId;
       }
     }
-    final messages = _getTreeMessages(targetId, _allMessages);
+    
+    // ৩. নতুন ট্রি তৈরি করা
+    final messages = _getTreeMessages(targetId, combinedMessages);
     setState(() {
       _messages = messages;
-      _parentMessageId = messages.last.messageId;
+      if (messages.isNotEmpty) {
+        _parentMessageId = messages.last.messageId;
+      }
     });
   }
 
